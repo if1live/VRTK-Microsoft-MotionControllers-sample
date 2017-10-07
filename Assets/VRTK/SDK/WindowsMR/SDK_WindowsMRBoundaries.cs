@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 #if VRTK_DEFINE_SDK_WINDOWSMR
+using HoloToolkit.Unity.InputModule;
 using HoloToolkit.Unity.Boundary;
 #endif
 
@@ -22,10 +23,9 @@ namespace VRTK {
         public override Transform GetPlayArea() {
             cachedPlayArea = GetSDKManagerPlayArea();
             if(cachedPlayArea == null) {
-                var boundaryMgr = VRTK_SharedMethods.FindEvenInactiveComponent<BoundaryManager>();
-                if(boundaryMgr != null) {
-                    cachedBoundary = boundaryMgr;
-                    cachedPlayArea = boundaryMgr.transform;
+                var comp = VRTK_SharedMethods.FindEvenInactiveComponent<MixedRealityTeleport>();
+                if(comp != null) {
+                    cachedPlayArea = comp.transform;
                 }
             }
             return cachedPlayArea;
