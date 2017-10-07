@@ -32,3 +32,13 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+
+# VR sdk
+SteamVR
+SteamVR.meta
+HoloToolkit
+HoloToolkit.meta
+HoloToolkit-Examples
+HoloToolkit-Examples.meta
+HoloToolkit-UnitTests
+HoloToolkit-UnitTests.meta
