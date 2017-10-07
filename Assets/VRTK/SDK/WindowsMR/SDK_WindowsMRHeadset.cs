@@ -19,7 +19,9 @@ namespace VRTK {
         private Quaternion currentHeadsetRotation;
 
         public override void AddHeadsetFade(Transform camera) {
-            throw new System.NotImplementedException();
+            if (camera && !camera.GetComponent<VRTK_ScreenFade>()) {
+                camera.gameObject.AddComponent<VRTK_ScreenFade>();
+            }
         }
 
         public override Transform GetHeadset() {

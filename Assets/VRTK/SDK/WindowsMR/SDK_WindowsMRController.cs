@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using HoloToolkit.Unity.InputModule;
+using System.Collections.Generic;
 using UnityEngine;
 #if VRTK_DEFINE_SDK_WINDOWSMR
 using UnityEngine.XR.WSA.Input;
@@ -14,12 +15,8 @@ namespace VRTK {
 #endif 
         {
 #if VRTK_DEFINE_SDK_WINDOWSMR
-
         private VRTK_TrackedController cachedLeftController;
         private VRTK_TrackedController cachedRightController;
-
-        protected const string RIGHT_HAND_CONTROLLER_NAME = "RightController";
-        protected const string LEFT_HAND_CONTROLLER_NAME = "LeftController";
 
         /// <summary>
         /// UnityEngine.XR.WSA.Input의 값을 enum올 접근할수 있도록 하려고
@@ -29,10 +26,6 @@ namespace VRTK {
             /// select pressed 
             /// </summary>
             Trigger,
-
-            /// <summary>
-            /// menu pressed
-            /// </summary>
             Menu,
 
             /// <summary>
@@ -40,89 +33,117 @@ namespace VRTK {
             /// </summary>
             Grip,
 
-            /// <summary>
-            /// ThumbstickPressed
-            /// </summary>
-            Thumbstick,
-
-            /// <summary>
-            /// TouchpadPressed + TouchpadTouched
-            /// </summary>
-            Touchpad,
+            ThumbstickPressed,
+            TouchpadPressed,
+            TouchpadTouched,
 
             ButtonOne,
             ButtonTwo,
         }
 
         /// <summary>
-        /// HoloToolkit, DebugPanelControllerInfo에서 가져옴
+        /// UnityEngine.XR.WSA.Input.InteractionSourceState
+        /// 간단한 구조체로 만들어서 다루고 싶어서 MotionControllerInfo를 그대로 쓰진 않았다
         /// </summary>
-        private class ControllerState {
-            public InteractionSourceHandedness Handedness;
-            public Vector3 PointerPosition;
-            public Quaternion PointerRotation;
-            public Vector3 GripPosition;
-            public Quaternion GripRotation;
-            public bool Grasped;
-            public bool MenuPressed;
-            public bool SelectPressed;
+        struct ControllerState {
+            /// <summary>
+            /// 유효한 컨트롤러 상태인지 확인하는 목적의 플래그
+            /// </summary>
+            public bool IsValid;
+
             public float SelectPressedAmount;
-            public bool ThumbstickPressed;
-            public Vector2 ThumbstickPosition;
+            public bool SelectPressed;
+            public bool MenuPressed;
+            public bool Grasped;
             public bool TouchpadPressed;
             public bool TouchpadTouched;
             public Vector2 TouchpadPosition;
+            public bool ThumbstickPressed;
+            public Vector2 ThumbstickPosition;
+
+            public bool GetButtonValue(MotionControllerButtonTypes t) {
+                switch(t) {
+                    case MotionControllerButtonTypes.Trigger:
+                        return SelectPressed;
+                    case MotionControllerButtonTypes.Menu:
+                        return MenuPressed;
+                    case MotionControllerButtonTypes.Grip:
+                        return Grasped;
+                    case MotionControllerButtonTypes.ThumbstickPressed:
+                        return ThumbstickPressed;
+                    case MotionControllerButtonTypes.TouchpadPressed:
+                        return TouchpadPressed;
+                    case MotionControllerButtonTypes.TouchpadTouched:
+                        return TouchpadTouched;
+
+                    case MotionControllerButtonTypes.ButtonOne:
+                        return TouchpadPressed;
+                    case MotionControllerButtonTypes.ButtonTwo:
+                        return MenuPressed;
+
+                    default:
+                        Debug.Assert(false, "do not reach");
+                        return false;
+                }
+            }
+
+            // for optimize GC
+            readonly static InteractionSourceState[] _cache = new InteractionSourceState[3];
+            public static ControllerState Current(uint index) {
+                // MixedRealityCameraParent_VRTK/MotionController에 등록한 순서로 id가 붙더라
+                // index 0 = left
+                // index 1 = right
+                // state.source.id는 진짜 id스럽다
+                // 하지만 index는 0~1
+                // 둘을 구분해야한다
+                var leftID = SDK_WindowsMRControllerManager.Instance.LeftMotionControllerID;
+                var rightID = SDK_WindowsMRControllerManager.Instance.RightMotionControllerID;
+                var expectedID = (index == 0) ? leftID : rightID;
+
+                var count = InteractionManager.GetCurrentReading(_cache);
+                for (int i = 0; i < count; i++) {
+                    var state = _cache[i];
+                    if (state.source.kind != InteractionSourceKind.Controller) {
+                        continue;
+                    }
+                    if(state.source.id != expectedID) {
+                        continue;
+                    }
+
+                    return new ControllerState()
+                    {
+                        IsValid = true,
+                        SelectPressedAmount = state.selectPressedAmount,
+                        SelectPressed = state.selectPressed,
+                        MenuPressed = state.menuPressed,
+                        Grasped = state.grasped,
+                        TouchpadPressed = state.touchpadPressed,
+                        TouchpadTouched = state.touchpadTouched,
+                        TouchpadPosition = state.touchpadPosition,
+                        ThumbstickPressed = state.thumbstickPressed,
+                        ThumbstickPosition = state.thumbstickPosition,
+                    };
+                }
+
+                return new ControllerState()
+                {
+                    IsValid = false,
+                };
+            }
         }
 
-        private Dictionary<uint, ControllerState> controllers;
+        ControllerState[] currStates = null;
+        ControllerState[] prevStates = null;
 
         private void Awake() {
-            controllers = new Dictionary<uint, ControllerState>();
-
-            InteractionManager.InteractionSourceDetected += InteractionManager_InteractionSourceDetected;
-            InteractionManager.InteractionSourceLost += InteractionManager_InteractionSourceLost;
-            InteractionManager.InteractionSourceUpdated += InteractionManager_InteractionSourceUpdated;
-        }
-
-        private void OnDestroy() {
-            InteractionManager.InteractionSourceDetected -= InteractionManager_InteractionSourceDetected;
-            InteractionManager.InteractionSourceLost -= InteractionManager_InteractionSourceLost;
-            InteractionManager.InteractionSourceUpdated -= InteractionManager_InteractionSourceUpdated;
-        }
-
-        private void InteractionManager_InteractionSourceDetected(InteractionSourceDetectedEventArgs obj) {
-            Debug.LogFormat("{0} {1} Detected", obj.state.source.handedness, obj.state.source.kind);
-
-            if (obj.state.source.kind == InteractionSourceKind.Controller && !controllers.ContainsKey(obj.state.source.id)) {
-                controllers.Add(obj.state.source.id, new ControllerState { Handedness = obj.state.source.handedness });
+            // InteractionSourceHandedness는  Unknown = 0, Left = 1, Right = 2
+            currStates = new ControllerState[3];
+            prevStates = new ControllerState[3];
+            for (int i = 0; i < 3; i++) {
+                currStates[i] = new ControllerState();
+                prevStates[i] = new ControllerState();
             }
         }
-
-        private void InteractionManager_InteractionSourceLost(InteractionSourceLostEventArgs obj) {
-            Debug.LogFormat("{0} {1} Lost", obj.state.source.handedness, obj.state.source.kind);
-
-            controllers.Remove(obj.state.source.id);
-        }
-
-        private void InteractionManager_InteractionSourceUpdated(InteractionSourceUpdatedEventArgs obj) {
-            ControllerState controllerState;
-            if (controllers.TryGetValue(obj.state.source.id, out controllerState)) {
-                obj.state.sourcePose.TryGetPosition(out controllerState.PointerPosition, InteractionSourceNode.Pointer);
-                obj.state.sourcePose.TryGetRotation(out controllerState.PointerRotation, InteractionSourceNode.Pointer);
-                obj.state.sourcePose.TryGetPosition(out controllerState.GripPosition, InteractionSourceNode.Grip);
-                obj.state.sourcePose.TryGetRotation(out controllerState.GripRotation, InteractionSourceNode.Grip);
-
-                controllerState.Grasped = obj.state.grasped;
-                controllerState.MenuPressed = obj.state.menuPressed;
-                controllerState.SelectPressed = obj.state.selectPressed;
-                controllerState.SelectPressedAmount = obj.state.selectPressedAmount;
-                controllerState.ThumbstickPressed = obj.state.thumbstickPressed;
-                controllerState.ThumbstickPosition = obj.state.thumbstickPosition;
-                controllerState.TouchpadPressed = obj.state.touchpadPressed;
-                controllerState.TouchpadTouched = obj.state.touchpadTouched;
-                controllerState.TouchpadPosition = obj.state.touchpadPosition;
-            }
-        }        
 
         public override Transform GenerateControllerPointerOrigin(GameObject parent) {
             // oculus 구현을 가져옴
@@ -150,11 +171,21 @@ namespace VRTK {
         }
 
         public override string GetControllerDefaultColliderPath(ControllerHand hand) {
-            throw new System.NotImplementedException();
+            var returnCollider = "ControllerColliders/Fallback";
+            switch (VRTK_DeviceFinder.GetHeadsetType(true)) {
+                case VRTK_DeviceFinder.Headsets.OculusRift:
+                    returnCollider = (hand == ControllerHand.Left ? "ControllerColliders/SteamVROculusTouch_Left" : "ControllerColliders/SteamVROculusTouch_Right");
+                    break;
+                case VRTK_DeviceFinder.Headsets.Vive:
+                    returnCollider = "ControllerColliders/HTCVive";
+                    break;
+            }
+            return returnCollider;
         }
 
         public override string GetControllerElementPath(ControllerElements element, ControllerHand hand, bool fullPath = false) {
-            throw new System.NotImplementedException();
+            // TODO ???
+            return null;
         }
 
         public override uint GetControllerIndex(GameObject controller) {
@@ -212,8 +243,8 @@ namespace VRTK {
         }
 
         public override Vector2 GetGripAxisOnIndex(uint index) {
-            var controller = controllers[index];
-            if(controller.Grasped) {
+            var state = currStates[index];
+            if (state.Grasped) {
                 return new Vector2(1, 0);
             } else {
                 return Vector2.zero;
@@ -233,21 +264,13 @@ namespace VRTK {
         }
 
         public override Vector2 GetTouchpadAxisOnIndex(uint index) {
-            ControllerState state;
-            var found = controllers.TryGetValue(index, out state);
-            if (!found) {
-                return Vector2.zero;
-            }
+            var state = currStates[index];
             var v = state.TouchpadPosition;
             return v;
         }
 
         public override Vector2 GetTriggerAxisOnIndex(uint index) {
-            ControllerState state;
-            var found = controllers.TryGetValue(index, out state);
-            if(!found) {
-                return Vector2.zero;
-            }
+            var state = currStates[index];
             var v = state.SelectPressedAmount;
             return new Vector2(v, 0);
         }
@@ -397,27 +420,27 @@ namespace VRTK {
         }
 
         public override bool IsTouchpadPressedDownOnIndex(uint index) {
-            return IsButtonPressed(index, ButtonPressTypes.PressDown, MotionControllerButtonTypes.Touchpad);
+            return IsButtonPressed(index, ButtonPressTypes.PressDown, MotionControllerButtonTypes.TouchpadPressed);
         }
 
         public override bool IsTouchpadPressedOnIndex(uint index) {
-            return IsButtonPressed(index, ButtonPressTypes.Press, MotionControllerButtonTypes.Touchpad);
+            return IsButtonPressed(index, ButtonPressTypes.Press, MotionControllerButtonTypes.TouchpadPressed);
         }
 
         public override bool IsTouchpadPressedUpOnIndex(uint index) {
-            return IsButtonPressed(index, ButtonPressTypes.PressUp, MotionControllerButtonTypes.Touchpad);
+            return IsButtonPressed(index, ButtonPressTypes.PressUp, MotionControllerButtonTypes.TouchpadPressed);
         }
 
         public override bool IsTouchpadTouchedDownOnIndex(uint index) {
-            return IsButtonPressed(index, ButtonPressTypes.TouchDown, MotionControllerButtonTypes.Touchpad);
+            return IsButtonPressed(index, ButtonPressTypes.TouchDown, MotionControllerButtonTypes.TouchpadTouched);
         }
 
         public override bool IsTouchpadTouchedOnIndex(uint index) {
-            return IsButtonPressed(index, ButtonPressTypes.Touch, MotionControllerButtonTypes.Touchpad);
+            return IsButtonPressed(index, ButtonPressTypes.Touch, MotionControllerButtonTypes.TouchpadTouched);
         }
 
         public override bool IsTouchpadTouchedUpOnIndex(uint index) {
-            return IsButtonPressed(index, ButtonPressTypes.TouchUp, MotionControllerButtonTypes.Touchpad);
+            return IsButtonPressed(index, ButtonPressTypes.TouchUp, MotionControllerButtonTypes.TouchpadTouched);
         }
 
         public override bool IsTriggerPressedDownOnIndex(uint index) {
@@ -448,27 +471,35 @@ namespace VRTK {
         }
 
         public override void ProcessUpdate(uint index, Dictionary<string, object> options) {
+            ControllerState curr = ControllerState.Current(index);
+            prevStates[index] = currStates[index];
+            currStates[index] = curr;
         }
 
         public override void SetControllerRenderModelWheel(GameObject renderModel, bool state) {
         }
 
         private bool IsButtonPressed(uint index, ButtonPressTypes type, MotionControllerButtonTypes button) {
-            ControllerState state;
-            var found = controllers.TryGetValue(index, out state);
-            if(!found) {
+            var currState = currStates[index];
+            var prevState = prevStates[index];
+
+            if(!currState.IsValid) {
                 return false;
             }
+
+            var curr = currState.GetButtonValue(button);
+            var prev = prevState.GetButtonValue(button);
             
-            // TODO 적절히 구현하기
             switch(type) {
                 case ButtonPressTypes.Press:
-                case ButtonPressTypes.PressDown:
-                case ButtonPressTypes.PressUp:
                 case ButtonPressTypes.Touch:
+                    return curr;
+                case ButtonPressTypes.PressDown:
                 case ButtonPressTypes.TouchDown:
+                    return (prev == false && curr == true);
+                case ButtonPressTypes.PressUp:
                 case ButtonPressTypes.TouchUp:
-                    break;
+                    return (prev == true && curr == false);
             }
             return false;
         }

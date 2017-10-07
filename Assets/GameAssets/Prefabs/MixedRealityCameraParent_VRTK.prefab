@@ -764,8 +764,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   AnimateControllerModel: 1
-  LeftControllerOverride: {fileID: 1097318689274706, guid: 869d340c69dbcef459070c1a159d38ac,
-    type: 2}
+  LeftControllerOverride: {fileID: 0}
   RightControllerOverride: {fileID: 0}
   TouchpadTouchedOverride: {fileID: 0}
   GLTFMaterial: {fileID: 2100000, guid: 2ac78523d661e954c83d799f582b22e8, type: 2}
