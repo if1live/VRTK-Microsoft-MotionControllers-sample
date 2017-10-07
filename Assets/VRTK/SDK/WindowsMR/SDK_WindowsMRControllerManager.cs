@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Collections;
 using UnityEngine.XR.WSA.Input;
 using HoloToolkit.Unity.InputModule;
+using HoloToolkit.Unity;
 #if !UNITY_EDITOR
 using GLTF;
 using Windows.Foundation;
