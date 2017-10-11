@@ -1,4 +1,5 @@
-﻿using HoloToolkit.Unity.InputModule;
+﻿using HoloToolkit.Unity;
+using HoloToolkit.Unity.InputModule;
 using System.Collections.Generic;
 using UnityEngine;
 #if VRTK_DEFINE_SDK_WINDOWSMR
@@ -11,8 +12,8 @@ namespace VRTK {
 #if VRTK_DEFINE_SDK_WINDOWSMR
         : SDK_BaseController
 #else
-        : SDK_FallbackController 
-#endif 
+        : SDK_FallbackController
+#endif
         {
 #if VRTK_DEFINE_SDK_WINDOWSMR
         private VRTK_TrackedController cachedLeftController;
@@ -23,7 +24,7 @@ namespace VRTK {
         /// </summary>
         enum MotionControllerButtonTypes {
             /// <summary>
-            /// select pressed 
+            /// select pressed
             /// </summary>
             Trigger,
             Menu,
@@ -286,7 +287,25 @@ namespace VRTK {
         }
 
         public override void HapticPulseOnIndex(uint index, float strength = 0.5F) {
-            // TODO 진동 구현
+            if (index < uint.MaxValue) {
+                var controller = GetControllerByIndex(index);
+
+                InteractionSource source = new InteractionSource();
+                if (IsControllerLeftHand(controller)) {
+                    source = MyMotionControllerVisualizer.Instance.LeftMotionControllerSource;
+                } else if (IsControllerRightHand(controller)) {
+                    source = MyMotionControllerVisualizer.Instance.RightMotionControllerSource;
+                }
+
+                if (source.id > 0) {
+                    // steamVR의 경우 3999(4ms)의 반복으로 진동을 구현한다 (그래서 함수 이름이 pulse)
+                    // 윈도MR의 경우 진동 시간을 매우 길게 설정하는게 가능하다
+                    // 하지만 VRTK 인터페이스를 뜯어고치긴 귀찮으니 스팀에 구현을 맞춤
+                    // 짧은 주기의 진동을 여러번 반복하는식으로 구현
+                    var duration = 0.050f;
+                    source.StartHaptics(strength, duration);
+                }
+            }
         }
 
         public override bool IsButtonOnePressedDownOnIndex(uint index) {
@@ -489,7 +508,7 @@ namespace VRTK {
 
             var curr = currState.GetButtonValue(button);
             var prev = prevState.GetButtonValue(button);
-            
+
             switch(type) {
                 case ButtonPressTypes.Press:
                 case ButtonPressTypes.Touch:

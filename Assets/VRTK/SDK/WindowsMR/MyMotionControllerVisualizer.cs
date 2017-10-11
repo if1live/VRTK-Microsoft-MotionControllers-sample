@@ -48,6 +48,7 @@ namespace VRTK {
 
         const string BlankModelName = "BlankModel";
 
+#if UNITY_WSA
         // This will be used to keep track of our controllers, indexed by their unique source ID.
         private Dictionary<uint, MyMotionControllerInfo> controllerDictionary;
 
@@ -60,6 +61,12 @@ namespace VRTK {
         MyMotionControllerInfo _cachedRightMotionController = null;
         public MyMotionControllerInfo LeftMotionController { get { return _cachedLeftMotionController; } }
         public MyMotionControllerInfo RightMotionController { get { return _cachedRightMotionController; } }
+
+        InteractionSource _cachedLeftMotionControllerSource;
+        InteractionSource _cachedRightMotionControllerSource;
+        public InteractionSource LeftMotionControllerSource { get { return _cachedLeftMotionControllerSource; } }
+        public InteractionSource RightMotionControllerSource { get { return _cachedRightMotionControllerSource; } }
+#endif
 
         void Awake() {
             MyMotionControllerVisualizer.Instance = this;
@@ -211,9 +218,11 @@ namespace VRTK {
                     if (source.handedness == InteractionSourceHandedness.Left) {
                         _cachedLeftMotionController = null;
                         _cachedLeftMotionControllerID = uint.MaxValue;
+                        _cachedLeftMotionControllerSource = new InteractionSource();
                     } else if (source.handedness == InteractionSourceHandedness.Right) {
                         _cachedRightMotionController = null;
                         _cachedRightMotionControllerID = uint.MaxValue;
+                        _cachedRightMotionControllerSource = new InteractionSource();
                     }
 
                     // override로 객체 만든경우 관련된것 삭제하기
@@ -322,14 +331,17 @@ namespace VRTK {
             if(source.handedness == InteractionSourceHandedness.Left) {
                 _cachedLeftMotionController = info;
                 _cachedLeftMotionControllerID = source.id;
+                _cachedLeftMotionControllerSource = source;
             } else if(source.handedness == InteractionSourceHandedness.Right) {
                 _cachedRightMotionController = info;
                 _cachedRightMotionControllerID = source.id;
+                _cachedRightMotionControllerSource = source;
             }
             yield break;
         }
 #endif
 
+#if UNITY_WSA
         private MyMotionControllerInfo FinishControllerSetup(GameObject parentGameObject, GameObject controllerModelGameObject, string handedness, uint id) {
             var defaultPos = controllerModelGameObject.transform.localPosition;
             var defaultRot = controllerModelGameObject.transform.localRotation;
@@ -341,15 +353,14 @@ namespace VRTK {
             controllerModelGameObject.transform.localRotation = defaultRot;
 
             var newControllerInfo = new MyMotionControllerInfo() { ControllerParent = parentGameObject };
-            // TODO 컨트롤러 애니메이션은 실제 게임에서 거의 필요없을것이다
-            // 왜냐하면 집게는 별도로 구현했으니
-            //if (AnimateControllerModel) {
-            //    newControllerInfo.LoadInfo(controllerModelGameObject.GetComponentsInChildren<Transform>(), this);
-            //}
+            if (AnimateControllerModel) {
+                newControllerInfo.LoadInfo(controllerModelGameObject.GetComponentsInChildren<Transform>(), this);
+            }
             controllerDictionary.Add(id, newControllerInfo);
 
             return newControllerInfo;
         }
+#endif
 
         public GameObject SpawnTouchpadVisualizer(Transform parentTransform) {
             GameObject touchVisualizer;
