@@ -225,23 +225,8 @@ namespace VRTK {
                         _cachedRightMotionControllerSource = new InteractionSource();
                     }
 
-                    // override로 객체 만든경우 관련된것 삭제하기
-                    GameObject controllerOverride = null;
-                    if(source.handedness == InteractionSourceHandedness.Left) {
-                        controllerOverride = LeftControllerOverride;
-                    } else if(source.handedness == InteractionSourceHandedness.Right) {
-                        controllerOverride = RightControllerOverride;
-                    }
-
-
-                    for (var i = controller.ControllerParent.transform.childCount-1; i >= 0 ; i--) {
-                        var child = controller.ControllerParent.transform.GetChild(i);
-                        if (controllerOverride != null && child.name.StartsWith(controllerOverride.name)) {
-                            Destroy(child.gameObject);
-                        } else if(child.name == BlankModelName) {
-                            Destroy(child.gameObject);
-                        }
-                    }
+                    // 렌더링 모델 삭제
+                    Destroy(controller.ControllerModelGameObject);
                 }
             }
         }
@@ -352,7 +337,11 @@ namespace VRTK {
             controllerModelGameObject.transform.localPosition = defaultPos;
             controllerModelGameObject.transform.localRotation = defaultRot;
 
-            var newControllerInfo = new MyMotionControllerInfo() { ControllerParent = parentGameObject };
+            var newControllerInfo = new MyMotionControllerInfo()
+            {
+                ControllerParent = parentGameObject,
+                ControllerModelGameObject = controllerModelGameObject,
+            };
             if (AnimateControllerModel) {
                 newControllerInfo.LoadInfo(controllerModelGameObject.GetComponentsInChildren<Transform>(), this);
             }

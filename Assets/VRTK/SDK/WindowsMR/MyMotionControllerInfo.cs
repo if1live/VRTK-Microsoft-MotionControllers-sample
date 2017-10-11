@@ -10,6 +10,7 @@ namespace VRTK {
     /// </summary>
     public class MyMotionControllerInfo {
         public GameObject ControllerParent;
+        public GameObject ControllerModelGameObject;
 
         private GameObject home;
         private Transform homePressed;
@@ -42,6 +43,19 @@ namespace VRTK {
         private Transform touchpadTouchYMin;
         private Transform touchpadTouchYMax;
         private GameObject touchpadTouchVisualizer;
+
+        // game object
+        public GameObject ElemHome { get { return home; } }
+        public GameObject ElemMenu { get { return menu; } }
+        public GameObject ElemGrasp { get { return grasp; } }
+        public GameObject ElemThumbstickPress { get { return thumbstickPress; } }
+        public GameObject ElemThumbstickX { get { return thumbstickX; } }
+        public GameObject ElemThumbstickY { get { return thumbstickY; } }
+        public GameObject ElemSelect { get { return select; } }
+        public GameObject ElemTouchpadPress { get { return touchpadPress; } }
+        public GameObject ElemTouchpadTouchX { get { return touchpadTouchX; } }
+        public GameObject ElemTouchpadTouchY { get { return touchpadTouchY; } }
+        public GameObject ElemTouchpadTouchVisualizer { get { return touchpadTouchVisualizer; } }
 
         // These values are used to determine if a button's state has changed.
         private bool wasGrasped;

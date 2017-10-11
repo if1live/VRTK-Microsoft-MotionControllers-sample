@@ -184,8 +184,68 @@ namespace VRTK {
             return returnCollider;
         }
 
+        internal static string GetElemPath(GameObject obj, GameObject root) {
+            if(obj == null) {
+                return "[NULL]";
+            }
+
+            var tr = obj.transform;
+            var rootTr = (root == null) ? null : root.transform;
+
+            var list = new List<string>();
+            while(tr != null && tr != rootTr) {
+                list.Add(tr.name);
+                tr = tr.parent;
+            }
+
+            list.Reverse();
+            var pathname = string.Join("/", list.ToArray());
+            return pathname;
+        }
+
         public override string GetControllerElementPath(ControllerElements element, ControllerHand hand, bool fullPath = false) {
-            // TODO ???
+            MyMotionControllerInfo info = null;
+            switch(hand) {
+                case ControllerHand.Left:
+                    info = MyMotionControllerVisualizer.Instance.LeftMotionController;
+                    break;
+                case ControllerHand.Right:
+                    info = MyMotionControllerVisualizer.Instance.RightMotionController;
+                    break;
+            }
+            if(info == null) {
+                return null;
+            }
+
+            // example
+            // MixedRealityCameraParent_VRTK/MotionControllers/RightController/New Game Object/GLTFScene/GLTFNode/GLTFNode/SELECT/VALUE
+
+            var path = "";
+            var root = info.ControllerModelGameObject;
+            switch(element) {
+                case ControllerElements.AttachPoint:
+                    return null;
+                case ControllerElements.Trigger:
+                    return path + GetElemPath(info.ElemSelect, root);
+                case ControllerElements.GripLeft:
+                    return path + GetElemPath(info.ElemGrasp, root);
+                case ControllerElements.GripRight:
+                    return path + GetElemPath(info.ElemGrasp, root);
+                case ControllerElements.Touchpad:
+                    return path + GetElemPath(info.ElemTouchpadPress, root);
+
+                case ControllerElements.ButtonOne:
+                    return path + GetElemPath(info.ElemTouchpadPress, root);
+                case ControllerElements.ButtonTwo:
+                    return path + GetElemPath(info.ElemMenu, root);
+
+                case ControllerElements.SystemMenu:
+                    return path + GetElemPath(info.ElemHome, root);
+                case ControllerElements.StartMenu:
+                    return path + GetElemPath(info.ElemMenu, root);
+                case ControllerElements.Body:
+                    return path + info.ControllerModelGameObject.name;
+            }
             return null;
         }
 
@@ -220,7 +280,17 @@ namespace VRTK {
                 }
 
                 if (controller != null) {
-                    model = (model != null && model.transform.childCount > 0 ? model.transform.GetChild(0).gameObject : null);
+                    MyMotionControllerInfo info = null;
+                    if (MyMotionControllerVisualizer.Instance != null) {
+                        if (hand == ControllerHand.Left) {
+                            info = MyMotionControllerVisualizer.Instance.LeftMotionController;
+                        } else if (hand == ControllerHand.Right) {
+                            info = MyMotionControllerVisualizer.Instance.RightMotionController;
+                        }
+                    }
+                    if(info != null) {
+                        model = info.ControllerModelGameObject;
+                    }
                 }
             }
             return model;
