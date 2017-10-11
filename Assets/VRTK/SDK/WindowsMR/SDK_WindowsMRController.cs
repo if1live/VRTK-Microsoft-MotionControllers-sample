@@ -96,8 +96,8 @@ namespace VRTK {
                 // state.source.id는 진짜 id스럽다
                 // 하지만 index는 0~1
                 // 둘을 구분해야한다
-                var leftID = SDK_WindowsMRControllerManager.Instance.LeftMotionControllerID;
-                var rightID = SDK_WindowsMRControllerManager.Instance.RightMotionControllerID;
+                var leftID = MyMotionControllerVisualizer.Instance.LeftMotionControllerID;
+                var rightID = MyMotionControllerVisualizer.Instance.RightMotionControllerID;
                 var expectedID = (index == 0) ? leftID : rightID;
 
                 var count = InteractionManager.GetCurrentReading(_cache);

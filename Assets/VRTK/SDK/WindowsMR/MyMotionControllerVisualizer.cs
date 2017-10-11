@@ -18,11 +18,11 @@ namespace VRTK {
     /// Motion Controller visualizer와 유사하지만
     /// 컨트롤러 객체를 동적으로 생성/삭제하지 않는다
     /// 컨트롤러 객체를 런타임에 생성/삭제하는것은 VRTK의 전제조건과 맞지 않기때문
-    /// 
+    ///
     /// TODO MotionControllerVisualizer와 비교하면서 작업하기
     /// </summary>
-    class SDK_WindowsMRControllerManager : MonoBehaviour {
-        internal static SDK_WindowsMRControllerManager Instance { get; private set; }
+    public class MyMotionControllerVisualizer : MonoBehaviour {
+        internal static MyMotionControllerVisualizer Instance { get; private set; }
 
         [Tooltip("This setting will be used to determine if the model, override or otherwise, should attempt to be animated based on the user's input.")]
         public bool AnimateControllerModel = true;
@@ -49,26 +49,26 @@ namespace VRTK {
         const string BlankModelName = "BlankModel";
 
         // This will be used to keep track of our controllers, indexed by their unique source ID.
-        private Dictionary<uint, MotionControllerInfo> controllerDictionary;
+        private Dictionary<uint, MyMotionControllerInfo> controllerDictionary;
 
         uint _cachedLeftMotionControllerID = uint.MaxValue;
         uint _cachedRightMotionControllerID = uint.MaxValue;
         public uint LeftMotionControllerID { get { return _cachedLeftMotionControllerID; } }
         public uint RightMotionControllerID { get { return _cachedRightMotionControllerID; } }
 
-        MotionControllerInfo _cachedLeftMotionController = null;
-        MotionControllerInfo _cachedRightMotionController = null;
-        public MotionControllerInfo LeftMotionController { get { return _cachedLeftMotionController; } }
-        public MotionControllerInfo RightMotionController { get { return _cachedRightMotionController; } }
+        MyMotionControllerInfo _cachedLeftMotionController = null;
+        MyMotionControllerInfo _cachedRightMotionController = null;
+        public MyMotionControllerInfo LeftMotionController { get { return _cachedLeftMotionController; } }
+        public MyMotionControllerInfo RightMotionController { get { return _cachedRightMotionController; } }
 
         void Awake() {
-            SDK_WindowsMRControllerManager.Instance = this;
+            MyMotionControllerVisualizer.Instance = this;
         }
 
         private void Start() {
             Application.onBeforeRender += Application_onBeforeRender;
 
-            controllerDictionary = new Dictionary<uint, MotionControllerInfo>();
+            controllerDictionary = new Dictionary<uint, MyMotionControllerInfo>();
 
 #if UNITY_WSA
             if (!Application.isEditor) {
@@ -98,7 +98,7 @@ namespace VRTK {
             // NOTE: The controller's state is being updated here in order to provide a good position and rotation
             // for any child GameObjects that might want to raycast or otherwise reason about their location in the world.
             foreach (var sourceState in InteractionManager.GetCurrentReading()) {
-                MotionControllerInfo currentController;
+                MyMotionControllerInfo currentController;
                 if (sourceState.source.kind == InteractionSourceKind.Controller && controllerDictionary.TryGetValue(sourceState.source.id, out currentController)) {
                     if (AnimateControllerModel) {
                         currentController.AnimateSelect(sourceState.selectPressedAmount);
@@ -136,7 +136,7 @@ namespace VRTK {
 
         private void OnDestroy() {
             Application.onBeforeRender -= Application_onBeforeRender;
-            SDK_WindowsMRControllerManager.Instance = null;
+            MyMotionControllerVisualizer.Instance = null;
         }
 
         private void Application_onBeforeRender() {
@@ -144,7 +144,7 @@ namespace VRTK {
             // NOTE: This work is being done here to present the most correct rendered location of the controller each frame.
             // Any app logic depending on the controller state should happen in Update() or using InteractionManager's events.
             foreach (var sourceState in InteractionManager.GetCurrentReading()) {
-                MotionControllerInfo currentController;
+                MyMotionControllerInfo currentController;
                 if (sourceState.source.kind == InteractionSourceKind.Controller && controllerDictionary.TryGetValue(sourceState.source.id, out currentController)) {
                     if (AnimateControllerModel) {
                         currentController.AnimateSelect(sourceState.selectPressedAmount);
@@ -200,7 +200,7 @@ namespace VRTK {
 
             InteractionSource source = obj.state.source;
             if (source.kind == InteractionSourceKind.Controller) {
-                MotionControllerInfo controller;
+                MyMotionControllerInfo controller;
                 if (controllerDictionary != null && controllerDictionary.TryGetValue(source.id, out controller)) {
                     controllerDictionary.Remove(source.id);
 
@@ -224,7 +224,7 @@ namespace VRTK {
                         controllerOverride = RightControllerOverride;
                     }
 
-                    
+
                     for (var i = controller.ControllerParent.transform.childCount-1; i >= 0 ; i--) {
                         var child = controller.ControllerParent.transform.GetChild(i);
                         if (controllerOverride != null && child.name.StartsWith(controllerOverride.name)) {
@@ -247,7 +247,7 @@ namespace VRTK {
                 parentGameObject = rightControllerParent;
             }
             Debug.Assert(parentGameObject != null);
-            parentGameObject.SetActive(true);            
+            parentGameObject.SetActive(true);
 
             if (source.handedness == InteractionSourceHandedness.Left && LeftControllerOverride != null) {
                 controllerModelGameObject = Instantiate(LeftControllerOverride);
@@ -312,7 +312,7 @@ namespace VRTK {
                 yield return gltfScript.LoadModel();
 #else
                 // 빈객체라도 만들어서 등록하기
-                // 컨트롤러가 등록되어야 controllerDictionary에 요소가 생겨서 좌표 갱신이 된다 
+                // 컨트롤러가 등록되어야 controllerDictionary에 요소가 생겨서 좌표 갱신이 된다
                 controllerModelGameObject = new GameObject() { name = BlankModelName };
                 //yield break;
 #endif
@@ -330,7 +330,7 @@ namespace VRTK {
         }
 #endif
 
-        private MotionControllerInfo FinishControllerSetup(GameObject parentGameObject, GameObject controllerModelGameObject, string handedness, uint id) {
+        private MyMotionControllerInfo FinishControllerSetup(GameObject parentGameObject, GameObject controllerModelGameObject, string handedness, uint id) {
             var defaultPos = controllerModelGameObject.transform.localPosition;
             var defaultRot = controllerModelGameObject.transform.localRotation;
 
@@ -340,7 +340,7 @@ namespace VRTK {
             controllerModelGameObject.transform.localPosition = defaultPos;
             controllerModelGameObject.transform.localRotation = defaultRot;
 
-            var newControllerInfo = new MotionControllerInfo() { ControllerParent = parentGameObject };
+            var newControllerInfo = new MyMotionControllerInfo() { ControllerParent = parentGameObject };
             // TODO 컨트롤러 애니메이션은 실제 게임에서 거의 필요없을것이다
             // 왜냐하면 집게는 별도로 구현했으니
             //if (AnimateControllerModel) {
