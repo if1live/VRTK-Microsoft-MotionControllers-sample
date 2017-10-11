@@ -236,11 +236,19 @@ namespace VRTK {
                         _cachedRightMotionControllerSource = new InteractionSource();
                     }
 
-                    // 렌더링 모델 삭제
-                    Destroy(controller.ControllerModelGameObject);
+                    // 렌더링 모델 비활성화
+                    controller.ControllerModelGameObject.SetActive(false);
                 }
             }
         }
+
+        /// <summary>
+        /// mixed reality toolkit은 객체 생성/삭제 기반으로 컨트롤러를 구현했지만
+        /// VRTK는 객체 on/off를 전제로 구현되었다
+        /// VRTK 뜯어고치는것보다는 mixed reality toolkit 손보는게 나을거같다
+        /// </summary>
+        GameObject leftControllerModelGameObject = null;
+        GameObject rightControllerModelGameObject = null;
 
         private IEnumerator LoadControllerModel(InteractionSource source) {
             GameObject controllerModelGameObject;
@@ -255,9 +263,16 @@ namespace VRTK {
             parentGameObject.SetActive(true);
 
             if (source.handedness == InteractionSourceHandedness.Left && LeftControllerOverride != null) {
-                controllerModelGameObject = Instantiate(LeftControllerOverride);
+                if(leftControllerModelGameObject == null) {
+                    leftControllerModelGameObject = Instantiate(LeftControllerOverride);
+                }
+                controllerModelGameObject = leftControllerModelGameObject;
+
             } else if (source.handedness == InteractionSourceHandedness.Right && RightControllerOverride != null) {
-                controllerModelGameObject = Instantiate(RightControllerOverride);
+                if (rightControllerModelGameObject == null) {
+                    rightControllerModelGameObject = Instantiate(RightControllerOverride);
+                }
+                controllerModelGameObject = rightControllerModelGameObject;
             } else {
 #if !UNITY_EDITOR
                 if (GLTFMaterial == null)
@@ -308,13 +323,29 @@ namespace VRTK {
                     reader.ReadBytes(fileBytes);
                 }
 
-                controllerModelGameObject = new GameObject();
-                GLTFComponentStreamingAssets gltfScript = controllerModelGameObject.AddComponent<GLTFComponentStreamingAssets>();
-                gltfScript.ColorMaterial = GLTFMaterial;
-                gltfScript.NoColorMaterial = GLTFMaterial;
-                gltfScript.GLTFData = fileBytes;
+                bool requireNewModel = false;
+                if (source.handedness == InteractionSourceHandedness.Left && leftControllerModelGameObject == null) {
+                    requiredNewModel = true;
+                } if (source.handedness == InteractionSourceHandedness.Right && rightControllerModelGameObject == null) {
+                    requiredNewModel = true;
+                }
 
-                yield return gltfScript.LoadModel();
+                if(requiredNewModel) {
+                    controllerModelGameObject = new GameObject();
+                    GLTFComponentStreamingAssets gltfScript = controllerModelGameObject.AddComponent<GLTFComponentStreamingAssets>();
+                    gltfScript.ColorMaterial = GLTFMaterial;
+                    gltfScript.NoColorMaterial = GLTFMaterial;
+                    gltfScript.GLTFData = fileBytes;
+
+                    yield return gltfScript.LoadModel();
+
+                } else {
+                    if (source.handedness == InteractionSourceHandedness.Left) {
+                        controllerModelGameObject = leftControllerModelGameObject;
+                    } else if (source.handedness == InteractionSourceHandedness.Right) {
+                        controllerModelGameObject = rightControllerModelGameObject;
+                    }
+                }
 #else
                 // 빈객체라도 만들어서 등록하기
                 // 컨트롤러가 등록되어야 controllerDictionary에 요소가 생겨서 좌표 갱신이 된다
@@ -322,6 +353,7 @@ namespace VRTK {
                 //yield break;
 #endif
             }
+            controllerModelGameObject.SetActive(true);
 
             var info = FinishControllerSetup(parentGameObject, controllerModelGameObject, source.handedness.ToString(), source.id);
             if(source.handedness == InteractionSourceHandedness.Left) {
