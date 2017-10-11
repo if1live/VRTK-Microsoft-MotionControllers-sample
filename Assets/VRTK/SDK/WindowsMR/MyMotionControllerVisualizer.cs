@@ -45,6 +45,8 @@ namespace VRTK {
         GameObject leftControllerParent = null;
         [SerializeField]
         GameObject rightControllerParent = null;
+        [SerializeField]
+        GameObject editorControllerOverride = null;
 
         const string BlankModelName = "BlankModel";
 
@@ -70,6 +72,15 @@ namespace VRTK {
 
         void Awake() {
             MyMotionControllerVisualizer.Instance = this;
+
+            if(Application.isEditor) {
+                if(LeftControllerOverride == null) {
+                    LeftControllerOverride = editorControllerOverride;
+                }
+                if(RightControllerOverride == null) {
+                    RightControllerOverride = editorControllerOverride;
+                }
+            }
         }
 
         private void Start() {

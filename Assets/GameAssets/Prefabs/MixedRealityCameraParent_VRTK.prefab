@@ -770,6 +770,8 @@ MonoBehaviour:
   GLTFMaterial: {fileID: 2100000, guid: 2ac78523d661e954c83d799f582b22e8, type: 2}
   leftControllerParent: {fileID: 1954574813844796}
   rightControllerParent: {fileID: 1013064268025548}
+  editorControllerOverride: {fileID: 1302174167446754, guid: db863e52d360f014d90af3c20fc08206,
+    type: 2}
 --- !u!114 &114424870890629640
 MonoBehaviour:
   m_ObjectHideFlags: 1
