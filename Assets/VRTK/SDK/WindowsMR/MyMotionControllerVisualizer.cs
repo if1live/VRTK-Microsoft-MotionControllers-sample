@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 #if UNITY_WSA
@@ -47,8 +47,6 @@ namespace VRTK {
         GameObject rightControllerParent = null;
         [SerializeField]
         GameObject editorControllerOverride = null;
-
-        const string BlankModelName = "BlankModel";
 
 #if UNITY_WSA
         // This will be used to keep track of our controllers, indexed by their unique source ID.
@@ -235,9 +233,6 @@ namespace VRTK {
                         _cachedRightMotionControllerID = uint.MaxValue;
                         _cachedRightMotionControllerSource = new InteractionSource();
                     }
-
-                    // 렌더링 모델 비활성화
-                    controller.ControllerModelGameObject.SetActive(false);
                 }
             }
         }
@@ -251,7 +246,7 @@ namespace VRTK {
         GameObject rightControllerModelGameObject = null;
 
         private IEnumerator LoadControllerModel(InteractionSource source) {
-            GameObject controllerModelGameObject;
+            GameObject controllerModelGameObject = null;
             GameObject parentGameObject = null;
 
             if (source.handedness == InteractionSourceHandedness.Left) {
@@ -275,62 +270,63 @@ namespace VRTK {
                 controllerModelGameObject = rightControllerModelGameObject;
             } else {
 #if !UNITY_EDITOR
-                if (GLTFMaterial == null)
-                {
-                    Debug.Log("If using glTF, please specify a material on " + name + ".");
-                    yield break;
+                bool requireNewModel = false;
+                if (source.handedness == InteractionSourceHandedness.Left && leftControllerModelGameObject == null) {
+                    requireNewModel = true;
+                }
+                if (source.handedness == InteractionSourceHandedness.Right && rightControllerModelGameObject == null) {
+                    requireNewModel = true;
                 }
 
-                // This API returns the appropriate glTF file according to the motion controller you're currently using, if supported.
-                IAsyncOperation<IRandomAccessStreamWithContentType> modelTask = source.TryGetRenderableModelAsync();
+                if (requireNewModel) {
+                    if (GLTFMaterial == null)
+                    {
+                        Debug.Log("If using glTF, please specify a material on " + name + ".");
+                        yield break;
+                    }
 
-                if (modelTask == null)
-                {
-                    Debug.Log("Model task is null.");
-                    yield break;
-                }
+                    // This API returns the appropriate glTF file according to the motion controller you're currently using, if supported.
+                    IAsyncOperation<IRandomAccessStreamWithContentType> modelTask = source.TryGetRenderableModelAsync();
 
-                while (modelTask.Status == AsyncStatus.Started)
-                {
-                    yield return null;
-                }
+                    if (modelTask == null)
+                    {
+                        Debug.Log("Model task is null.");
+                        yield break;
+                    }
 
-                IRandomAccessStreamWithContentType modelStream = modelTask.GetResults();
-
-                if (modelStream == null)
-                {
-                    Debug.Log("Model stream is null.");
-                    yield break;
-                }
-
-                if (modelStream.Size == 0)
-                {
-                    Debug.Log("Model stream is empty.");
-                    yield break;
-                }
-
-                byte[] fileBytes = new byte[modelStream.Size];
-
-                using (DataReader reader = new DataReader(modelStream))
-                {
-                    DataReaderLoadOperation loadModelOp = reader.LoadAsync((uint)modelStream.Size);
-
-                    while (loadModelOp.Status == AsyncStatus.Started)
+                    while (modelTask.Status == AsyncStatus.Started)
                     {
                         yield return null;
                     }
 
-                    reader.ReadBytes(fileBytes);
-                }
+                    IRandomAccessStreamWithContentType modelStream = modelTask.GetResults();
 
-                bool requireNewModel = false;
-                if (source.handedness == InteractionSourceHandedness.Left && leftControllerModelGameObject == null) {
-                    requiredNewModel = true;
-                } if (source.handedness == InteractionSourceHandedness.Right && rightControllerModelGameObject == null) {
-                    requiredNewModel = true;
-                }
+                    if (modelStream == null)
+                    {
+                        Debug.Log("Model stream is null.");
+                        yield break;
+                    }
 
-                if(requiredNewModel) {
+                    if (modelStream.Size == 0)
+                    {
+                        Debug.Log("Model stream is empty.");
+                        yield break;
+                    }
+
+                    byte[] fileBytes = new byte[modelStream.Size];
+
+                    using (DataReader reader = new DataReader(modelStream))
+                    {
+                        DataReaderLoadOperation loadModelOp = reader.LoadAsync((uint)modelStream.Size);
+
+                        while (loadModelOp.Status == AsyncStatus.Started)
+                        {
+                            yield return null;
+                        }
+
+                        reader.ReadBytes(fileBytes);
+                    }
+
                     controllerModelGameObject = new GameObject();
                     GLTFComponentStreamingAssets gltfScript = controllerModelGameObject.AddComponent<GLTFComponentStreamingAssets>();
                     gltfScript.ColorMaterial = GLTFMaterial;
@@ -338,6 +334,13 @@ namespace VRTK {
                     gltfScript.GLTFData = fileBytes;
 
                     yield return gltfScript.LoadModel();
+
+                    // 캐싱
+                    if (source.handedness == InteractionSourceHandedness.Left) {
+                        leftControllerModelGameObject = controllerModelGameObject;
+                    } else if (source.handedness == InteractionSourceHandedness.Right) {
+                        rightControllerModelGameObject = controllerModelGameObject;
+                    }
 
                 } else {
                     if (source.handedness == InteractionSourceHandedness.Left) {
@@ -347,13 +350,33 @@ namespace VRTK {
                     }
                 }
 #else
-                // 빈객체라도 만들어서 등록하기
-                // 컨트롤러가 등록되어야 controllerDictionary에 요소가 생겨서 좌표 갱신이 된다
-                controllerModelGameObject = new GameObject() { name = BlankModelName };
-                //yield break;
+                // 더미 컨트롤러를 만들었기때문에 여기에는 진입하지 않는다
+                Debug.Assert(false);
+                yield break;
 #endif
             }
-            controllerModelGameObject.SetActive(true);
+
+            /*
+            사용 가능한 mesh renderer 목록
+            8개
+
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/GLTFNode/GLTFNode/GLTFNode/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/HOME/VALUE/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/MENU/VALUE/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/GRASP/VALUE/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/THUMBSTICK_PRESS/VALUE/THUMBSTICK_X/VALUE/THUMBSTICK_Y/VALUE/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/SELECT/VALUE/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/TOUCHPAD_PRESS/VALUE/TOUCHPAD_PRESS_X/VALUE/TOUCHPAD_PRESS_Y/VALUE/TOUCHPAD_TOUCH_X/GLTFNode/GLTFMesh/Primitive
+            New Game Object/GLTFScene/GLTFNode/GLTFNode/GLTFNode/GLTFMesh/Primitive
+
+            var renderers = controllerModelGameObject.GetComponentsInChildren<Renderer>();
+            Debug.Log(renderers.Length);
+            for (var i = 0 ; i < renderers.Length; i++) {
+                var r = renderers[i];
+                var n = SDK_WindowsMRController.GetElemPath(r.gameObject, null);
+                Debug.LogFormat("{0} {1} {2}", i, n, r.GetType().ToString());
+            }
+            */
 
             var info = FinishControllerSetup(parentGameObject, controllerModelGameObject, source.handedness.ToString(), source.id);
             if(source.handedness == InteractionSourceHandedness.Left) {
