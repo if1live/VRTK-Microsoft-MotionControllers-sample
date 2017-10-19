@@ -18,7 +18,18 @@ namespace VRTK {
         }
         public Side side;
 
+        Quaternion initial_rot;
 
+        [SerializeField]
+        Vector3 rel_pos;
+        [SerializeField]
+        Quaternion rel_rot;
+
+        private void Start() {
+            initial_rot = transform.localRotation;
+        }
+
+#if UNITY_WSA
         void Update() {
             var success = Synchronize();
             // 좌표 동기화에 성공하면 더이상 갱신할 필요가 없다
@@ -26,6 +37,7 @@ namespace VRTK {
                 enabled = false;
             }
         }
+#endif
 
         bool Synchronize() {
 #if UNITY_WSA
@@ -81,6 +93,14 @@ namespace VRTK {
                 // mat_unknown = inv_mat_grip * mat_pointing
                 var m = mat_grip.inverse * mat_pointing;
                 WinMR_MathHelper.ApplyMatrix(transform, m);
+
+                rel_pos = transform.localPosition;
+                rel_rot = transform.localRotation;
+
+                // 최초 상태를 적용
+                var q = rel_rot * initial_rot;
+                transform.localRotation = q;
+
                 return true;
             }
             return false;
