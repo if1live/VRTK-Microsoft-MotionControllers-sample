@@ -13,6 +13,7 @@ namespace VRTK {
     /// </summary>
     public class WinMR_PointingPoseSynchronizer : MonoBehaviour {
         public enum Side {
+            Anything,
             Left,
             Right,
         }
@@ -39,15 +40,28 @@ namespace VRTK {
         }
 #endif
 
-        bool Synchronize() {
+#if UNITY_WSA
+        bool IsMatchingHand(Side side, InteractionSourceHandedness hand) {
+            switch(side) {
+                case Side.Anything:
+                    return true;
+                case Side.Left:
+                    return hand == InteractionSourceHandedness.Left;
+                case Side.Right:
+                    return hand == InteractionSourceHandedness.Right;
+                default:
+                    return false;
+            }
+        }
+#endif
+
+        public bool Synchronize() {
 #if UNITY_WSA
             foreach (var sourceState in InteractionManager.GetCurrentReading()) {
                 if (sourceState.source.kind != InteractionSourceKind.Controller) {
                     continue;
                 }
-
-                var targetHand = (side == Side.Left) ? InteractionSourceHandedness.Left : InteractionSourceHandedness.Right;
-                if(sourceState.source.handedness != targetHand) {
+                if(!IsMatchingHand(side, sourceState.source.handedness)) {
                     continue;
                 }
 
