@@ -311,7 +311,20 @@ namespace VRTK {
         }
 
         public override GameObject GetControllerRenderModel(GameObject controller) {
-            // TODO ?
+            var visualizer = MyMotionControllerVisualizer.Instance;
+            if(visualizer == null) {
+                return null;
+            }
+            MyMotionControllerInfo info = null;
+            if(IsControllerLeftHand(controller)) {
+                info = visualizer.LeftMotionController;
+            } else if(IsControllerRightHand(controller)) {
+                info = visualizer.RightMotionController;
+            }
+
+            if(info != null) {
+                return info.ControllerModelGameObject;
+            }
             return null;
         }
 
