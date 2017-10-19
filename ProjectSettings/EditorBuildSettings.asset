@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/Toko/Scenes/Toko_MotionControllerTest.unity
     guid: 7a215fe5f6a0b294a8b1008e088de106
   - enabled: 1
+    path: Assets/Toko/Scenes/Toko_003_Controller_SimplePointer.unity
+    guid: 96ba934820187394083f557359b167d1
+  - enabled: 1
     path: Assets/Toko/Scenes/Toko_029_Controller_Tooltips.unity
     guid: 39a0ad4d0c16f11478754e283ecc9bbf
   - enabled: 1
