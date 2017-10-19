@@ -12,6 +12,8 @@ namespace VRTK {
         public GameObject ControllerParent;
         public GameObject ControllerModelGameObject;
 
+        public Transform PointingTransform;
+
         private GameObject home;
         private Transform homePressed;
         private Transform homeUnpressed;

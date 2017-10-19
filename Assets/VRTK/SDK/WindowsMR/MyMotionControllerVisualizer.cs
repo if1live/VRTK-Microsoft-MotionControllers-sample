@@ -45,8 +45,22 @@ namespace VRTK {
         GameObject leftControllerParent = null;
         [SerializeField]
         GameObject rightControllerParent = null;
+
         [SerializeField]
-        GameObject editorControllerOverride = null;
+        GameObject editorLeftControllerOverride = null;
+        [SerializeField]
+        GameObject editorRightControllerOverride = null;
+
+        [SerializeField]
+        Transform leftPointer = null;
+        public Transform LeftPointer { get { return leftPointer; } }
+
+        [SerializeField]
+        Transform rightPointer = null;
+        public Transform RightPointer { get { return rightPointer; } }
+
+        [SerializeField]
+        bool showPointer = true;
 
 #if UNITY_WSA
         // This will be used to keep track of our controllers, indexed by their unique source ID.
@@ -71,22 +85,31 @@ namespace VRTK {
         void Awake() {
             MyMotionControllerVisualizer.Instance = this;
 
-            if(Application.isEditor) {
-                if(LeftControllerOverride == null) {
-                    LeftControllerOverride = editorControllerOverride;
+            if (showPointer == false) {
+                if (leftPointer != null) {
+                    leftPointer.gameObject.SetActive(false);
                 }
-                if(RightControllerOverride == null) {
-                    RightControllerOverride = editorControllerOverride;
+                if (rightPointer != null) {
+                    rightPointer.gameObject.SetActive(false);
+                }
+            }
+
+            if(Application.isEditor) {
+                if (LeftControllerOverride == null) {
+                    LeftControllerOverride = editorLeftControllerOverride;
+                }
+                if (RightControllerOverride == null) {
+                    RightControllerOverride = editorRightControllerOverride;
                 }
             }
         }
 
         private void Start() {
+#if UNITY_WSA
             Application.onBeforeRender += Application_onBeforeRender;
 
             controllerDictionary = new Dictionary<uint, MyMotionControllerInfo>();
 
-#if UNITY_WSA
             if (!Application.isEditor) {
                 if (GLTFMaterial == null) {
                     if (LeftControllerOverride == null && RightControllerOverride == null) {
@@ -145,6 +168,27 @@ namespace VRTK {
                     if (sourceState.sourcePose.TryGetRotation(out newRotation, InteractionSourceNode.Grip)) {
                         currentController.ControllerParent.transform.localRotation = newRotation;
                     }
+
+                    Transform pointer = null;
+                    switch (sourceState.source.handedness) {
+                        case InteractionSourceHandedness.Left:
+                            pointer = leftPointer;
+                            break;
+                        case InteractionSourceHandedness.Right:
+                            pointer = rightPointer;
+                            break;
+                    }
+                    if (pointer != null) {
+                        Vector3 pointingPos;
+                        if (sourceState.sourcePose.TryGetPosition(out pointingPos, InteractionSourceNode.Pointer)) {
+                            pointer.localPosition = pointingPos;
+                        }
+
+                        Quaternion pointingRot;
+                        if (sourceState.sourcePose.TryGetRotation(out pointingRot, InteractionSourceNode.Pointer)) {
+                            pointer.localRotation = pointingRot;
+                        }
+                    }
                 }
             }
 #endif
@@ -190,6 +234,27 @@ namespace VRTK {
                     Quaternion newRotation;
                     if (sourceState.sourcePose.TryGetRotation(out newRotation, InteractionSourceNode.Grip)) {
                         currentController.ControllerParent.transform.localRotation = newRotation;
+                    }
+
+                    Transform pointer = null;
+                    switch (sourceState.source.handedness) {
+                        case InteractionSourceHandedness.Left:
+                            pointer = leftPointer;
+                            break;
+                        case InteractionSourceHandedness.Right:
+                            pointer = rightPointer;
+                            break;
+                    }
+                    if (pointer != null) {
+                        Vector3 pointingPos;
+                        if (sourceState.sourcePose.TryGetPosition(out pointingPos, InteractionSourceNode.Pointer)) {
+                            pointer.localPosition = pointingPos;
+                        }
+
+                        Quaternion pointingRot;
+                        if (sourceState.sourcePose.TryGetRotation(out pointingRot, InteractionSourceNode.Pointer)) {
+                            pointer.localRotation = pointingRot;
+                        }
                     }
                 }
             }
@@ -380,10 +445,15 @@ namespace VRTK {
 
             var info = FinishControllerSetup(parentGameObject, controllerModelGameObject, source.handedness.ToString(), source.id);
             if(source.handedness == InteractionSourceHandedness.Left) {
+                info.PointingTransform = leftPointer;
+
                 _cachedLeftMotionController = info;
                 _cachedLeftMotionControllerID = source.id;
                 _cachedLeftMotionControllerSource = source;
+
             } else if(source.handedness == InteractionSourceHandedness.Right) {
+                info.PointingTransform = rightPointer;
+
                 _cachedRightMotionController = info;
                 _cachedRightMotionControllerID = source.id;
                 _cachedRightMotionControllerSource = source;

@@ -147,7 +147,16 @@ namespace VRTK {
         }
 
         public override Transform GenerateControllerPointerOrigin(GameObject parent) {
-            // oculus 구현을 가져옴
+            var visualizer = MyMotionControllerVisualizer.Instance;
+            if(visualizer == null) {
+                return null;
+            }
+
+            if (IsControllerLeftHand(parent)) {
+                return visualizer.LeftPointer;
+            } else if(IsControllerRightHand(parent)) {
+                return visualizer.RightPointer;
+            }
             return null;
         }
 
@@ -224,7 +233,8 @@ namespace VRTK {
             var root = info.ControllerModelGameObject;
             switch(element) {
                 case ControllerElements.AttachPoint:
-                    return null;
+                    return path + GetElemPath(info.PointingTransform.gameObject, info.ControllerParent);
+
                 case ControllerElements.Trigger:
                     return path + GetElemPath(info.ElemSelect, root);
                 case ControllerElements.GripLeft:
