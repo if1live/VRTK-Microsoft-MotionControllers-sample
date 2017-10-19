@@ -20,12 +20,12 @@ namespace VRTK {
 
 
         void Update() {
-            if(_synchronize == false) {
-                _synchronize = Synchronize();
+            var success = Synchronize();
+            // 좌표 동기화에 성공하면 더이상 갱신할 필요가 없다
+            if (success) {
+                enabled = false;
             }
         }
-
-        bool _synchronize = false;
 
         bool Synchronize() {
 #if UNITY_WSA
@@ -39,23 +39,39 @@ namespace VRTK {
                     continue;
                 }
 
+                // transform.localPosition assign attempt for 'RightController' is not valid. Input localPosition is { 0.000000, NaN, 0.000000 }.
+                // transform.localRotation assign attempt for 'RightController' is not valid. Input rotation is { 0.000000, NaN, 0.000000, NaN }.
+                // 컨트롤러의 값을 갖고왔다고 항상 믿을수 있는게 아니더라
+                // 이 에러가 나중에 고쳐질거같진한데 언제 고쳐질지 믿을수없다
+                // 게다가 좌표 동기화는 한번밖에 안하니
+                // 진짜로 작동하는 순간에 잘못된 값이 들어오면 골치아프다
+                // 값 검증을 거치자
+
                 Vector3 grip_pos;
                 if(!sourceState.sourcePose.TryGetPosition(out grip_pos, InteractionSourceNode.Grip)) {
                     continue;
                 }
+                if (!WinMR_MathHelper.IsValidVector(grip_pos)) { continue; }
+
                 Quaternion grip_rot;
                 if (!sourceState.sourcePose.TryGetRotation(out grip_rot, InteractionSourceNode.Grip)) {
                     continue;
                 }
+                if(!WinMR_MathHelper.IsValidQuaternion(grip_rot)) { continue; }
+
 
                 Vector3 pointing_pos;
                 if (!sourceState.sourcePose.TryGetPosition(out pointing_pos, InteractionSourceNode.Pointer)) {
                     continue;
                 }
+                if(!WinMR_MathHelper.IsValidVector(pointing_pos)) { continue; }
+
                 Quaternion pointing_rot;
                 if (!sourceState.sourcePose.TryGetRotation(out pointing_rot, InteractionSourceNode.Pointer)) {
                     continue;
                 }
+                if(!WinMR_MathHelper.IsValidQuaternion(pointing_rot)) { continue; }
+
 
                 var mat_grip = Matrix4x4.TRS(grip_pos, grip_rot, Vector3.one);
                 var mat_pointing = Matrix4x4.TRS(pointing_pos, pointing_rot, Vector3.one);
@@ -64,21 +80,13 @@ namespace VRTK {
                 // mat_grip * mat_unknown = mat_pointing
                 // mat_unknown = inv_mat_grip * mat_pointing
                 var m = mat_grip.inverse * mat_pointing;
-                ApplyMatrix(m);
+                WinMR_MathHelper.ApplyMatrix(transform, m);
                 return true;
             }
             return false;
 #else
             return false;
 #endif
-        }
-
-        void ApplyMatrix(Matrix4x4 mat) {
-            // http://answers.unity3d.com/answers/1134836/view.html
-            transform.localPosition = mat.GetColumn(3);
-            transform.localScale = new Vector3(mat.GetColumn(0).magnitude, mat.GetColumn(1).magnitude, mat.GetColumn(2).magnitude);
-            float w = Mathf.Sqrt(1.0f + mat.m00 + mat.m11 + mat.m22) / 2.0f;
-            transform.localRotation = new Quaternion((mat.m21 - mat.m12) / (4.0f * w), (mat.m02 - mat.m20) / (4.0f * w), (mat.m10 - mat.m01) / (4.0f * w), w);
         }
     }
 }
