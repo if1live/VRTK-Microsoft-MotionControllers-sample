@@ -1,8 +1,8 @@
-﻿using HoloToolkit.Unity;
-using HoloToolkit.Unity.InputModule;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 #if VRTK_DEFINE_SDK_WINDOWSMR
+using HoloToolkit.Unity;
+using HoloToolkit.Unity.InputModule;
 using UnityEngine.XR.WSA.Input;
 #endif
 

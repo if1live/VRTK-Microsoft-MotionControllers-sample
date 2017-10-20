@@ -10,6 +10,7 @@ namespace VRTK {
     /// </summary>
     public class MyMotionControllerInfo {
         public GameObject ControllerParent;
+        public GameObject ModelParent;
         public GameObject ControllerModelGameObject;
 
         public Transform PointingTransform;

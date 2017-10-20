@@ -47,6 +47,11 @@ namespace VRTK {
         GameObject rightControllerParent = null;
 
         [SerializeField]
+        GameObject leftModelParent = null;
+        [SerializeField]
+        GameObject rightModelParent = null;
+
+        [SerializeField]
         GameObject editorLeftControllerOverride = null;
         [SerializeField]
         GameObject editorRightControllerOverride = null;
@@ -313,14 +318,17 @@ namespace VRTK {
         private IEnumerator LoadControllerModel(InteractionSource source) {
             GameObject controllerModelGameObject = null;
             GameObject parentGameObject = null;
+            GameObject rootGameObject = null;
 
             if (source.handedness == InteractionSourceHandedness.Left) {
-                parentGameObject = leftControllerParent;
+                rootGameObject = leftControllerParent;
+                parentGameObject = leftModelParent;
             } else if (source.handedness == InteractionSourceHandedness.Right) {
-                parentGameObject = rightControllerParent;
+                rootGameObject = rightControllerParent;
+                parentGameObject = rightModelParent;
             }
-            Debug.Assert(parentGameObject != null);
-            parentGameObject.SetActive(true);
+            Debug.Assert(rootGameObject != null);
+            rootGameObject.SetActive(true);
 
             if (source.handedness == InteractionSourceHandedness.Left && LeftControllerOverride != null) {
                 if(leftControllerModelGameObject == null) {
@@ -443,7 +451,7 @@ namespace VRTK {
             }
             */
 
-            var info = FinishControllerSetup(parentGameObject, controllerModelGameObject, source.handedness.ToString(), source.id);
+            var info = FinishControllerSetup(rootGameObject, parentGameObject, controllerModelGameObject, source.handedness.ToString(), source.id);
             if(source.handedness == InteractionSourceHandedness.Left) {
                 info.PointingTransform = leftPointer;
 
@@ -463,11 +471,11 @@ namespace VRTK {
 #endif
 
 #if UNITY_WSA
-        private MyMotionControllerInfo FinishControllerSetup(GameObject parentGameObject, GameObject controllerModelGameObject, string handedness, uint id) {
+        private MyMotionControllerInfo FinishControllerSetup(GameObject rootGameObject, GameObject parentGameObject, GameObject controllerModelGameObject, string handedness, uint id) {
             var defaultPos = controllerModelGameObject.transform.localPosition;
             var defaultRot = controllerModelGameObject.transform.localRotation;
 
-            parentGameObject.transform.parent = transform;
+            //parentGameObject.transform.parent = transform;
             controllerModelGameObject.transform.parent = parentGameObject.transform;
 
             controllerModelGameObject.transform.localPosition = defaultPos;
@@ -475,7 +483,8 @@ namespace VRTK {
 
             var newControllerInfo = new MyMotionControllerInfo()
             {
-                ControllerParent = parentGameObject,
+                ControllerParent = rootGameObject,
+                ModelParent = parentGameObject,
                 ControllerModelGameObject = controllerModelGameObject,
             };
             if (AnimateControllerModel) {
