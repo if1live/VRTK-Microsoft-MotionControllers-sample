@@ -20,6 +20,7 @@ namespace VRTK {
         public Side side;
 
         Quaternion initial_rot;
+        Vector3 initial_pos;
 
         [SerializeField]
         Vector3 rel_pos;
@@ -28,6 +29,7 @@ namespace VRTK {
 
         private void Start() {
             initial_rot = transform.localRotation;
+            initial_pos = transform.localPosition;
         }
 
 #if UNITY_WSA
@@ -114,6 +116,9 @@ namespace VRTK {
                 // 최초 상태를 적용
                 var q = rel_rot * initial_rot;
                 transform.localRotation = q;
+
+                var diff = transform.localRotation * initial_pos;
+                transform.localPosition += diff;
 
                 return true;
             }
