@@ -2345,11 +2345,6 @@ Prefab:
       propertyPath: hand
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 114454728652599264, guid: c67c811961c8491498b3b59f1da2f9a4,
-        type: 2}
-      propertyPath: side
-      value: 1
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: c67c811961c8491498b3b59f1da2f9a4, type: 2}
   m_IsPrefabParent: 0
