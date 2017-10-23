@@ -1,7 +1,10 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System.Collections.Generic;
 using UnityEngine;
 
-#if UNITY_WSA
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
 using System.Collections;
 using UnityEngine.XR.WSA.Input;
 using HoloToolkit.Unity.InputModule;
@@ -15,13 +18,18 @@ using Windows.Storage.Streams;
 
 namespace VRTK {
     /// <summary>
+    /// This script spawns a specific GameObject when a controller is detected
+    /// and animates the controller position, rotation, button presses, and
+    /// thumbstick/touchpad interactions, where applicable.
+    ///
     /// Motion Controller visualizer와 유사하지만
     /// 컨트롤러 객체를 동적으로 생성/삭제하지 않는다
     /// 컨트롤러 객체를 런타임에 생성/삭제하는것은 VRTK의 전제조건과 맞지 않기때문
     ///
     /// TODO MotionControllerVisualizer와 비교하면서 작업하기
     /// </summary>
-    public class MyMotionControllerVisualizer : MonoBehaviour {
+    public class MyMotionControllerVisualizer : MonoBehaviour
+    {
         internal static MyMotionControllerVisualizer Instance { get; private set; }
 
         [Tooltip("This setting will be used to determine if the model, override or otherwise, should attempt to be animated based on the user's input.")]
@@ -69,7 +77,7 @@ namespace VRTK {
 
 #if UNITY_WSA
         // This will be used to keep track of our controllers, indexed by their unique source ID.
-        private Dictionary<uint, MyMotionControllerInfo> controllerDictionary;
+        private Dictionary<uint, MyMotionControllerInfo> controllerDictionary = new Dictionary<uint, MyMotionControllerInfo>();
 
         uint _cachedLeftMotionControllerID = uint.MaxValue;
         uint _cachedRightMotionControllerID = uint.MaxValue;
@@ -87,7 +95,8 @@ namespace VRTK {
         public InteractionSource RightMotionControllerSource { get { return _cachedRightMotionControllerSource; } }
 #endif
 
-        void Awake() {
+        void Awake()
+        {
             MyMotionControllerVisualizer.Instance = this;
 
             if (showPointer == false) {
@@ -109,68 +118,88 @@ namespace VRTK {
             }
         }
 
-        private void Start() {
-#if UNITY_WSA
+        private void Start()
+        {
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
             Application.onBeforeRender += Application_onBeforeRender;
 
-            controllerDictionary = new Dictionary<uint, MyMotionControllerInfo>();
-
-            if (!Application.isEditor) {
-                if (GLTFMaterial == null) {
-                    if (LeftControllerOverride == null && RightControllerOverride == null) {
+            if (!Application.isEditor)
+            {
+                if (GLTFMaterial == null)
+                {
+                    if (LeftControllerOverride == null && RightControllerOverride == null)
+                    {
                         Debug.Log("If using glTF, please specify a material on " + name + ". Otherwise, please specify controller overrides.");
-                    } else if (LeftControllerOverride == null || RightControllerOverride == null) {
+                    }
+                    else if (LeftControllerOverride == null || RightControllerOverride == null)
+                    {
                         Debug.Log("Only one override is specified, and no material is specified for the glTF model. Please set the material or the " + ((LeftControllerOverride == null) ? "left" : "right") + " controller override on " + name + ".");
                     }
                 }
-            } else {
+            }
+            else
+            {
                 // Since we're using non-Unity APIs, glTF will only load in a UWP app.
-                if (LeftControllerOverride == null && RightControllerOverride == null) {
+                if (LeftControllerOverride == null && RightControllerOverride == null)
+                {
                     Debug.Log("Running in the editor won't render the glTF models, and no controller overrides are set. Please specify them on " + name + ".");
-                } else if (LeftControllerOverride == null || RightControllerOverride == null) {
+                }
+                else if (LeftControllerOverride == null || RightControllerOverride == null)
+                {
                     Debug.Log("Running in the editor won't render the glTF models, and only one controller override is specified. Please set the " + ((LeftControllerOverride == null) ? "left" : "right") + " override on " + name + ".");
                 }
             }
 
             InteractionManager.InteractionSourceDetected += InteractionManager_InteractionSourceDetected;
+            InteractionManager.InteractionSourceUpdated += InteractionManager_InteractionSourceUpdated;
             InteractionManager.InteractionSourceLost += InteractionManager_InteractionSourceLost;
 #endif
         }
 
-        private void Update() {
-#if UNITY_WSA
+        private void Update()
+        {
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
             // NOTE: The controller's state is being updated here in order to provide a good position and rotation
             // for any child GameObjects that might want to raycast or otherwise reason about their location in the world.
-            foreach (var sourceState in InteractionManager.GetCurrentReading()) {
+            foreach (var sourceState in InteractionManager.GetCurrentReading())
+            {
                 MyMotionControllerInfo currentController;
-                if (sourceState.source.kind == InteractionSourceKind.Controller && controllerDictionary.TryGetValue(sourceState.source.id, out currentController)) {
-                    if (AnimateControllerModel) {
+                if (sourceState.source.kind == InteractionSourceKind.Controller && controllerDictionary.TryGetValue(sourceState.source.id, out currentController))
+                {
+                    if (AnimateControllerModel)
+                    {
                         currentController.AnimateSelect(sourceState.selectPressedAmount);
 
-                        if (sourceState.source.supportsGrasp) {
+                        if (sourceState.source.supportsGrasp)
+                        {
                             currentController.AnimateGrasp(sourceState.grasped);
                         }
 
-                        if (sourceState.source.supportsMenu) {
+                        if (sourceState.source.supportsMenu)
+                        {
                             currentController.AnimateMenu(sourceState.menuPressed);
                         }
 
-                        if (sourceState.source.supportsThumbstick) {
+                        if (sourceState.source.supportsThumbstick)
+                        {
                             currentController.AnimateThumbstick(sourceState.thumbstickPressed, sourceState.thumbstickPosition);
                         }
 
-                        if (sourceState.source.supportsTouchpad) {
+                        if (sourceState.source.supportsTouchpad)
+                        {
                             currentController.AnimateTouchpad(sourceState.touchpadPressed, sourceState.touchpadTouched, sourceState.touchpadPosition);
                         }
                     }
 
                     Vector3 newPosition;
-                    if (sourceState.sourcePose.TryGetPosition(out newPosition, InteractionSourceNode.Grip)) {
+                    if (sourceState.sourcePose.TryGetPosition(out newPosition, InteractionSourceNode.Grip))
+                    {
                         currentController.ControllerParent.transform.localPosition = newPosition;
                     }
 
                     Quaternion newRotation;
-                    if (sourceState.sourcePose.TryGetRotation(out newRotation, InteractionSourceNode.Grip)) {
+                    if (sourceState.sourcePose.TryGetRotation(out newRotation, InteractionSourceNode.Grip))
+                    {
                         currentController.ControllerParent.transform.localRotation = newRotation;
                     }
 
@@ -199,45 +228,61 @@ namespace VRTK {
 #endif
         }
 
-        private void OnDestroy() {
-            Application.onBeforeRender -= Application_onBeforeRender;
+        private void OnDestroy()
+        {
             MyMotionControllerVisualizer.Instance = null;
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
+            InteractionManager.InteractionSourceDetected -= InteractionManager_InteractionSourceDetected;
+            InteractionManager.InteractionSourceUpdated -= InteractionManager_InteractionSourceUpdated;
+            InteractionManager.InteractionSourceLost -= InteractionManager_InteractionSourceLost;
+            Application.onBeforeRender -= Application_onBeforeRender;
+#endif
         }
 
-        private void Application_onBeforeRender() {
-#if UNITY_WSA
+        private void Application_onBeforeRender()
+        {
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
             // NOTE: This work is being done here to present the most correct rendered location of the controller each frame.
             // Any app logic depending on the controller state should happen in Update() or using InteractionManager's events.
-            foreach (var sourceState in InteractionManager.GetCurrentReading()) {
+            foreach (var sourceState in InteractionManager.GetCurrentReading())
+            {
                 MyMotionControllerInfo currentController;
-                if (sourceState.source.kind == InteractionSourceKind.Controller && controllerDictionary.TryGetValue(sourceState.source.id, out currentController)) {
-                    if (AnimateControllerModel) {
+                if (sourceState.source.kind == InteractionSourceKind.Controller && controllerDictionary.TryGetValue(sourceState.source.id, out currentController))
+                {
+                    if (AnimateControllerModel)
+                    {
                         currentController.AnimateSelect(sourceState.selectPressedAmount);
 
-                        if (sourceState.source.supportsGrasp) {
+                        if (sourceState.source.supportsGrasp)
+                        {
                             currentController.AnimateGrasp(sourceState.grasped);
                         }
 
-                        if (sourceState.source.supportsMenu) {
+                        if (sourceState.source.supportsMenu)
+                        {
                             currentController.AnimateMenu(sourceState.menuPressed);
                         }
 
-                        if (sourceState.source.supportsThumbstick) {
+                        if (sourceState.source.supportsThumbstick)
+                        {
                             currentController.AnimateThumbstick(sourceState.thumbstickPressed, sourceState.thumbstickPosition);
                         }
 
-                        if (sourceState.source.supportsTouchpad) {
+                        if (sourceState.source.supportsTouchpad)
+                        {
                             currentController.AnimateTouchpad(sourceState.touchpadPressed, sourceState.touchpadTouched, sourceState.touchpadPosition);
                         }
                     }
 
                     Vector3 newPosition;
-                    if (sourceState.sourcePose.TryGetPosition(out newPosition, InteractionSourceNode.Grip)) {
+                    if (sourceState.sourcePose.TryGetPosition(out newPosition, InteractionSourceNode.Grip))
+                    {
                         currentController.ControllerParent.transform.localPosition = newPosition;
                     }
 
                     Quaternion newRotation;
-                    if (sourceState.sourcePose.TryGetRotation(out newRotation, InteractionSourceNode.Grip)) {
+                    if (sourceState.sourcePose.TryGetRotation(out newRotation, InteractionSourceNode.Grip))
+                    {
                         currentController.ControllerParent.transform.localRotation = newRotation;
                     }
 
@@ -266,13 +311,22 @@ namespace VRTK {
 #endif
         }
 
-#if UNITY_WSA
-        private void InteractionManager_InteractionSourceDetected(InteractionSourceDetectedEventArgs obj) {
-            Debug.LogFormat("{0} {1} Detected", obj.state.source.handedness, obj.state.source.kind);
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
+        private void InteractionManager_InteractionSourceUpdated(InteractionSourceUpdatedEventArgs obj)
+        {
+            StartTrackingController(obj.state.source);
+        }
 
-            // We only want to attempt loading a model if this source is actually a controller.
-            if (obj.state.source.kind == InteractionSourceKind.Controller && !controllerDictionary.ContainsKey(obj.state.source.id)) {
-                StartCoroutine(LoadControllerModel(obj.state.source));
+        private void InteractionManager_InteractionSourceDetected(InteractionSourceDetectedEventArgs obj)
+        {
+            StartTrackingController(obj.state.source);
+        }
+
+        private void StartTrackingController(InteractionSource source)
+        {
+            if (source.kind == InteractionSourceKind.Controller && !controllerDictionary.ContainsKey(source.id))
+            {
+                StartCoroutine(LoadControllerModel(source));
             }
         }
 
@@ -281,13 +335,14 @@ namespace VRTK {
         /// is removed from the tracking dictionary.
         /// </summary>
         /// <param name="obj">The source event args to be used to determine the controller model to be removed.</param>
-        private void InteractionManager_InteractionSourceLost(InteractionSourceLostEventArgs obj) {
-            Debug.LogFormat("{0} {1} Lost", obj.state.source.handedness, obj.state.source.kind);
-
+        private void InteractionManager_InteractionSourceLost(InteractionSourceLostEventArgs obj)
+        {
             InteractionSource source = obj.state.source;
-            if (source.kind == InteractionSourceKind.Controller) {
+            if (source.kind == InteractionSourceKind.Controller)
+            {
                 MyMotionControllerInfo controller;
-                if (controllerDictionary != null && controllerDictionary.TryGetValue(source.id, out controller)) {
+                if (controllerDictionary != null && controllerDictionary.TryGetValue(source.id, out controller))
+                {
                     controllerDictionary.Remove(source.id);
 
                     // 컨트롤러 객체 재사용하고싶으니 파괴하진 않는다
@@ -315,15 +370,19 @@ namespace VRTK {
         GameObject leftControllerModelGameObject = null;
         GameObject rightControllerModelGameObject = null;
 
-        private IEnumerator LoadControllerModel(InteractionSource source) {
+        private IEnumerator LoadControllerModel(InteractionSource source)
+        {
             GameObject controllerModelGameObject = null;
             GameObject parentGameObject = null;
             GameObject rootGameObject = null;
 
-            if (source.handedness == InteractionSourceHandedness.Left) {
+            if (source.handedness == InteractionSourceHandedness.Left)
+            {
                 rootGameObject = leftControllerParent;
                 parentGameObject = leftModelParent;
-            } else if (source.handedness == InteractionSourceHandedness.Right) {
+            }
+            else if (source.handedness == InteractionSourceHandedness.Right)
+            {
                 rootGameObject = rightControllerParent;
                 parentGameObject = rightModelParent;
             }
@@ -470,7 +529,7 @@ namespace VRTK {
         }
 #endif
 
-#if UNITY_WSA
+#if UNITY_WSA && UNITY_2017_2_OR_NEWER
         private MyMotionControllerInfo FinishControllerSetup(GameObject rootGameObject, GameObject parentGameObject, GameObject controllerModelGameObject, string handedness, uint id) {
             var defaultPos = controllerModelGameObject.transform.localPosition;
             var defaultRot = controllerModelGameObject.transform.localRotation;
@@ -487,7 +546,8 @@ namespace VRTK {
                 ModelParent = parentGameObject,
                 ControllerModelGameObject = controllerModelGameObject,
             };
-            if (AnimateControllerModel) {
+            if (AnimateControllerModel)
+            {
                 newControllerInfo.LoadInfo(controllerModelGameObject.GetComponentsInChildren<Transform>(), this);
             }
             controllerDictionary.Add(id, newControllerInfo);
@@ -496,11 +556,15 @@ namespace VRTK {
         }
 #endif
 
-        public GameObject SpawnTouchpadVisualizer(Transform parentTransform) {
+        public GameObject SpawnTouchpadVisualizer(Transform parentTransform)
+        {
             GameObject touchVisualizer;
-            if (TouchpadTouchedOverride != null) {
+            if (TouchpadTouchedOverride != null)
+            {
                 touchVisualizer = Instantiate(TouchpadTouchedOverride);
-            } else {
+            }
+            else
+            {
                 touchVisualizer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 touchVisualizer.transform.localScale = new Vector3(0.0025f, 0.0025f, 0.0025f);
                 touchVisualizer.GetComponent<Renderer>().sharedMaterial = GLTFMaterial;

@@ -8,7 +8,8 @@ namespace VRTK {
     /// This script keeps track of the GameObjects for each button on the controller.
     /// It also keeps track of the animation Transforms in order to properly animate according to user input.
     /// </summary>
-    public class MyMotionControllerInfo {
+    public class MyMotionControllerInfo
+    {
         public GameObject ControllerParent;
         public GameObject ModelParent;
         public GameObject ControllerModelGameObject;
@@ -78,17 +79,21 @@ namespace VRTK {
         /// </summary>
         /// <param name="childTransforms">The transforms of the glTF model.</param>
         /// <param name="visualizerScript">The script containing references to any objects to spawn.</param>
-        public void LoadInfo(Transform[] childTransforms, MyMotionControllerVisualizer visualizerScript) {
-            foreach (Transform child in childTransforms) {
+        public void LoadInfo(Transform[] childTransforms, MyMotionControllerVisualizer visualizerScript)
+        {
+            foreach (Transform child in childTransforms)
+            {
                 // Animation bounds are named in two pairs:
                 // pressed/unpressed and min/max. There is also a value
                 // transform, which is the transform to modify to
                 // animate the interactions. We also look for the
                 // touch transform, in order to spawn the touchpadTouched
                 // visualizer.
-                switch (child.name.ToLower()) {
+                switch (child.name.ToLower())
+                {
                     case "pressed":
-                        switch (child.parent.name.ToLower()) {
+                        switch (child.parent.name.ToLower())
+                        {
                             case "home":
                                 homePressed = child;
                                 break;
@@ -110,7 +115,8 @@ namespace VRTK {
                         }
                         break;
                     case "unpressed":
-                        switch (child.parent.name.ToLower()) {
+                        switch (child.parent.name.ToLower())
+                        {
                             case "home":
                                 homeUnpressed = child;
                                 break;
@@ -132,7 +138,8 @@ namespace VRTK {
                         }
                         break;
                     case "min":
-                        switch (child.parent.name.ToLower()) {
+                        switch (child.parent.name.ToLower())
+                        {
                             case "thumbstick_x":
                                 thumbstickXMin = child;
                                 break;
@@ -148,7 +155,8 @@ namespace VRTK {
                         }
                         break;
                     case "max":
-                        switch (child.parent.name.ToLower()) {
+                        switch (child.parent.name.ToLower())
+                        {
                             case "thumbstick_x":
                                 thumbstickXMax = child;
                                 break;
@@ -164,7 +172,8 @@ namespace VRTK {
                         }
                         break;
                     case "value":
-                        switch (child.parent.name.ToLower()) {
+                        switch (child.parent.name.ToLower())
+                        {
                             case "home":
                                 home = child.gameObject;
                                 break;
@@ -204,42 +213,53 @@ namespace VRTK {
             }
         }
 
-        public void AnimateGrasp(bool isGrasped) {
-            if (grasp != null && graspPressed != null && graspUnpressed != null && isGrasped != wasGrasped) {
+        public void AnimateGrasp(bool isGrasped)
+        {
+            if (grasp != null && graspPressed != null && graspUnpressed != null && isGrasped != wasGrasped)
+            {
                 SetLocalPositionAndRotation(grasp, isGrasped ? graspPressed : graspUnpressed);
                 wasGrasped = isGrasped;
             }
         }
 
-        public void AnimateMenu(bool isMenuPressed) {
-            if (menu != null && menuPressed != null && menuUnpressed != null && isMenuPressed != wasMenuPressed) {
+        public void AnimateMenu(bool isMenuPressed)
+        {
+            if (menu != null && menuPressed != null && menuUnpressed != null && isMenuPressed != wasMenuPressed)
+            {
                 SetLocalPositionAndRotation(menu, isMenuPressed ? menuPressed : menuUnpressed);
                 wasMenuPressed = isMenuPressed;
             }
         }
 
-        public void AnimateHome(bool isHomePressed) {
-            if (home != null && homePressed != null && homeUnpressed != null && isHomePressed != wasHomePressed) {
+        public void AnimateHome(bool isHomePressed)
+        {
+            if (home != null && homePressed != null && homeUnpressed != null && isHomePressed != wasHomePressed)
+            {
                 SetLocalPositionAndRotation(home, isHomePressed ? homePressed : homeUnpressed);
                 wasHomePressed = isHomePressed;
             }
         }
 
-        public void AnimateSelect(float newSelectPressedAmount) {
-            if (select != null && selectPressed != null && selectUnpressed != null && newSelectPressedAmount != lastSelectPressedAmount) {
+        public void AnimateSelect(float newSelectPressedAmount)
+        {
+            if (select != null && selectPressed != null && selectUnpressed != null && newSelectPressedAmount != lastSelectPressedAmount)
+            {
                 select.transform.localPosition = Vector3.Lerp(selectUnpressed.localPosition, selectPressed.localPosition, newSelectPressedAmount);
                 select.transform.localRotation = Quaternion.Lerp(selectUnpressed.localRotation, selectPressed.localRotation, newSelectPressedAmount);
                 lastSelectPressedAmount = newSelectPressedAmount;
             }
         }
 
-        public void AnimateThumbstick(bool isThumbstickPressed, Vector2 newThumbstickPosition) {
-            if (thumbstickPress != null && thumbstickPressed != null && thumbstickUnpressed != null && isThumbstickPressed != wasThumbstickPressed) {
+        public void AnimateThumbstick(bool isThumbstickPressed, Vector2 newThumbstickPosition)
+        {
+            if (thumbstickPress != null && thumbstickPressed != null && thumbstickUnpressed != null && isThumbstickPressed != wasThumbstickPressed)
+            {
                 SetLocalPositionAndRotation(thumbstickPress, isThumbstickPressed ? thumbstickPressed : thumbstickUnpressed);
                 wasThumbstickPressed = isThumbstickPressed;
             }
 
-            if (thumbstickX != null && thumbstickY != null && thumbstickXMin != null && thumbstickXMax != null && thumbstickYMin != null && thumbstickYMax != null && newThumbstickPosition != lastThumbstickPosition) {
+            if (thumbstickX != null && thumbstickY != null && thumbstickXMin != null && thumbstickXMax != null && thumbstickYMin != null && thumbstickYMax != null && newThumbstickPosition != lastThumbstickPosition)
+            {
                 Vector2 thumbstickNormalized = (newThumbstickPosition + Vector2.one) * 0.5f;
 
                 thumbstickX.transform.localPosition = Vector3.Lerp(thumbstickXMin.localPosition, thumbstickXMax.localPosition, thumbstickNormalized.x);
@@ -252,18 +272,22 @@ namespace VRTK {
             }
         }
 
-        public void AnimateTouchpad(bool isTouchpadPressed, bool isTouchpadTouched, Vector2 newTouchpadPosition) {
-            if (touchpadPress != null && touchpadPressed != null && touchpadUnpressed != null && isTouchpadPressed != wasTouchpadPressed) {
+        public void AnimateTouchpad(bool isTouchpadPressed, bool isTouchpadTouched, Vector2 newTouchpadPosition)
+        {
+            if (touchpadPress != null && touchpadPressed != null && touchpadUnpressed != null && isTouchpadPressed != wasTouchpadPressed)
+            {
                 SetLocalPositionAndRotation(touchpadPress, isTouchpadPressed ? touchpadPressed : touchpadUnpressed);
                 wasTouchpadPressed = isTouchpadPressed;
             }
 
-            if (touchpadTouchVisualizer != null && isTouchpadTouched != wasTouchpadTouched) {
+            if (touchpadTouchVisualizer != null && isTouchpadTouched != wasTouchpadTouched)
+            {
                 touchpadTouchVisualizer.SetActive(isTouchpadTouched);
                 wasTouchpadTouched = isTouchpadTouched;
             }
 
-            if (touchpadTouchX != null && touchpadTouchY != null && touchpadTouchXMin != null && touchpadTouchXMax != null && touchpadTouchYMin != null && touchpadTouchYMax != null && newTouchpadPosition != lastTouchpadPosition) {
+            if (touchpadTouchX != null && touchpadTouchY != null && touchpadTouchXMin != null && touchpadTouchXMax != null && touchpadTouchYMin != null && touchpadTouchYMax != null && newTouchpadPosition != lastTouchpadPosition)
+            {
                 Vector2 touchpadNormalized = (newTouchpadPosition + Vector2.one) * 0.5f;
 
                 touchpadTouchX.transform.localPosition = Vector3.Lerp(touchpadTouchXMin.localPosition, touchpadTouchXMax.localPosition, touchpadNormalized.x);
@@ -276,7 +300,8 @@ namespace VRTK {
             }
         }
 
-        private void SetLocalPositionAndRotation(GameObject buttonGameObject, Transform newTransform) {
+        private void SetLocalPositionAndRotation(GameObject buttonGameObject, Transform newTransform)
+        {
             buttonGameObject.transform.localPosition = newTransform.localPosition;
             buttonGameObject.transform.localRotation = newTransform.localRotation;
         }
